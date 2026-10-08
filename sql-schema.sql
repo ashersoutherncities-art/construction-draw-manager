@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS draw_projects (
   percent_complete NUMERIC DEFAULT 0,
   remaining_balance NUMERIC,
   total_drawn NUMERIC DEFAULT 0,
-  gc_name TEXT DEFAULT 'Southern Cities Construction LLC',
+  gc_name TEXT DEFAULT 'Southern Cities Construction',
   status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

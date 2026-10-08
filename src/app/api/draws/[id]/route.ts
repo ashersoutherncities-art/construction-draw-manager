@@ -12,6 +12,34 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json()
   const supabase = getSupabaseAdmin()
 
+  // Trust-fund compliance gate: a draw can't move to 'approved' without a
+  // lien waiver attached and the milestone explicitly confirmed. Check the
+  // incoming body first (fields can be submitted alongside the approval),
+  // falling back to whatever's already on the row.
+  if (body.status === 'approved') {
+    const { data: current } = await supabase
+      .from('draw_requests')
+      .select('waiver_file_url, milestone_confirmed')
+      .eq('id', params.id)
+      .single()
+
+    const waiverUrl = body.waiver_file_url ?? current?.waiver_file_url
+    const milestoneConfirmed = body.milestone_confirmed ?? current?.milestone_confirmed
+
+    if (!waiverUrl) {
+      return NextResponse.json(
+        { error: 'Cannot approve: no lien waiver attached to this draw.' },
+        { status: 400 }
+      )
+    }
+    if (!milestoneConfirmed) {
+      return NextResponse.json(
+        { error: 'Cannot approve: milestone completion has not been confirmed.' },
+        { status: 400 }
+      )
+    }
+  }
+
   const updateData: any = {
     ...body,
     updated_at: new Date().toISOString(),

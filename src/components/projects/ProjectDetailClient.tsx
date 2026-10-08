@@ -45,6 +45,7 @@ interface Project {
   total_drawn: number
   gc_name: string
   status: string
+  bank_sub_account_label: string | null
   draw_requests: DrawRequest[]
 }
 
@@ -72,6 +73,23 @@ export function ProjectDetailClient({ project: initialProject }: { project: Proj
   const [showNewDraw, setShowNewDraw] = useState(false)
   const [approveTarget, setApproveTarget] = useState<DrawRequest | null>(null)
   const [denyTarget, setDenyTarget] = useState<DrawRequest | null>(null)
+  const [editingBank, setEditingBank] = useState(false)
+  const [bankLabel, setBankLabel] = useState(project.bank_sub_account_label ?? '')
+  const [savingBank, setSavingBank] = useState(false)
+
+  const saveBankLabel = async () => {
+    setSavingBank(true)
+    const res = await fetch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bank_sub_account_label: bankLabel }),
+    })
+    if (res.ok) {
+      setProject(await res.json())
+      setEditingBank(false)
+    }
+    setSavingBank(false)
+  }
 
   const draws = [...(project.draw_requests ?? [])].sort((a, b) => (a.draw_number ?? 0) - (b.draw_number ?? 0))
   const pendingDraws = draws.filter(d => d.status === 'pending')
@@ -106,7 +124,32 @@ export function ProjectDetailClient({ project: initialProject }: { project: Proj
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Budget Breakdown */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-[#132452] mb-5">Budget Breakdown</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-[#132452]">Budget Breakdown</h2>
+            <div className="text-sm">
+              {editingBank ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={bankLabel}
+                    onChange={e => setBankLabel(e.target.value)}
+                    placeholder="e.g. Relay — 123 Main St sub-account"
+                    className="px-2 py-1 border border-gray-200 rounded text-xs w-56 focus:ring-2 focus:ring-[#fa8c41] outline-none"
+                  />
+                  <button onClick={saveBankLabel} disabled={savingBank} className="text-xs font-semibold text-green-700">
+                    {savingBank ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={() => { setEditingBank(false); setBankLabel(project.bank_sub_account_label ?? '') }} className="text-xs text-gray-400">
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setEditingBank(true)} className="text-gray-500 hover:text-[#132452] transition text-xs">
+                  <span className="font-medium">Trust account:</span>{' '}
+                  {project.bank_sub_account_label || <span className="text-orange-500">not set — click to add</span>}
+                </button>
+              )}
+            </div>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-6">
             {[
               { label: 'Holdback Amount', value: fmt(project.holdback_amount), color: 'text-[#132452]' },
